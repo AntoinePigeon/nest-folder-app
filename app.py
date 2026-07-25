@@ -1,6 +1,6 @@
 import sys
 from datetime import date
-from PySide6.QtWidgets import QApplication, QWidget, QLineEdit, QFormLayout, QPushButton, QMessageBox, QGroupBox, QHBoxLayout, QVBoxLayout, QCheckBox
+from PySide6.QtWidgets import QApplication, QWidget, QLineEdit, QFormLayout, QPushButton, QMessageBox, QGroupBox, QHBoxLayout, QVBoxLayout, QCheckBox, QFileDialog, QTabWidget
 from pathlib import Path
 from core import plan_job, create_folders
 
@@ -15,9 +15,9 @@ DEFAULTS = {
 
 CHANNELS = ["51", "loro", "mono"]
 
-parent_pattern = "[nomdetravail]_[episode]_[distinction]_[langue]_ref[ref]_livrables_audio_[cadence]_ss[version_ss]_[date]"
+PARENT_PATTERN = "[nomdetravail]_[episode]_[distinction]_[langue]_ref[ref]_livrables_audio_[cadence]_ss[version_ss]_[date]"
 
-catalog = {
+CATALOG = {
     "mix": "[nomdetravail]_[episode]_[distinction]_[langue]_ref[ref]_mix_[canaux]_[niveau]_[cadence]_ss[version_ss]_[date]",
     "dial": "[nomdetravail]_[episode]_[distinction]_[langue]_ref[ref]_stem_dial_[canaux]_[cadence]_ss[version_ss]_[date]",
     "fx": "[nomdetravail]_[episode]_[distinction]_[langue]_ref[ref]_stem_fx_[canaux]_[cadence]_ss[version_ss]_[date]",
@@ -38,70 +38,107 @@ catalog = {
     "mus_undipped": "[nomdetravail]_[episode]_[distinction]_[langue]_ref[ref]_stem_mus_undipped_[canaux]_[cadence]_ss[version_ss]_[date]",
 }
 
-def main():
-    app = QApplication(sys.argv)
+CATEGORIES = {
+    "MDME": ["mix", "mix_vd", "dial", "fx", "mus"],
+    "MNE": ["mne", "mne_opt_dial", "mne_opt_walla", "mne_opt_fffx"],
+    "Mix Minus": ["mix_no_dial", "mix_no_mus", "mix_no_vo", "mix_undipped"],
+    "Stems": ["dial_no_vo", "vo", "mus_score", "mus_stock", "mus_undipped"]
+}
 
-    window = QWidget()
-    window.setWindowTitle("Nest")
-    window.resize(400, 400)
+class NestWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Nest")
+        self.resize(700, 300)
+        self.catalog = CATALOG
+        self.build_ui()
 
-    layout = QFormLayout(window)
+    def build_ui(self):
 
-    fields = {}
-    for token in TOKENS:
-        field = QLineEdit()
-        default = DEFAULTS.get(token)
-        if default is not None:
-            field.setText(default)
-        layout.addRow(token, field)
-        fields[token] = field
+        self.fields = {}
+        self.registry = {}
+        self.tabs = QTabWidget()
+        self.build_tabs()
 
-    registry = {}
-    for delivery_item in catalog:
-        group = QGroupBox(delivery_item)
-        group.setCheckable(True)
-        group.setChecked(False)
-        inner = QHBoxLayout(group) # Use QVBoxLayout for vertical layout
-        channel_boxes = {}
-        for channel in CHANNELS:
-            checkbox = QCheckBox(channel)
-            inner.addWidget(checkbox)
-            channel_boxes[channel] = checkbox
-        layout.addRow(group)
-        registry[delivery_item] = {"box": group, "channels": channel_boxes}
+        form_container = QWidget()
+        layout = QFormLayout(form_container)
+        self.build_form(layout)
+        outer_layout = QVBoxLayout(self)
 
-    submit_btn = QPushButton("Generate")
-    layout.addRow(submit_btn)
+        columns_layout = QHBoxLayout()
+        columns_layout.addWidget(form_container)
+        columns_layout.addWidget(self.tabs)
+        outer_layout.addLayout(columns_layout)
 
-    def warn(message, title="Warning!"):
-        QMessageBox.warning(window, title, message)
+        submit_btn = QPushButton("Generate")
+        outer_layout.addWidget(submit_btn)
+        submit_btn.clicked.connect(self.on_generate)
 
-    def on_generate():
-        values = {token: field.text().strip() for token, field in fields.items()}
+    def build_form(self, layout):
+        for token in TOKENS:
+            field = QLineEdit()
+            default = DEFAULTS.get(token)
+            if default is not None:
+                field.setText(default)
+            layout.addRow(token, field)
+            self.fields[token] = field
+
+    def build_tabs(self):
+        for category, items in CATEGORIES.items():
+            page = QWidget()
+            page_layout = QVBoxLayout(page)
+
+            for delivery_item in items:
+                group = QGroupBox(delivery_item)
+                group.setCheckable(True)
+                group.setChecked(False)
+                inner = QHBoxLayout(group) # Use QVBoxLayout for vertical layout
+
+                channel_boxes = {}
+                for channel in CHANNELS:
+                    checkbox = QCheckBox(channel)
+                    inner.addWidget(checkbox)
+                    channel_boxes[channel] = checkbox
+
+                page_layout.addWidget(group)
+                self.registry[delivery_item] = {"box": group, "channels": channel_boxes}
+
+            page_layout.addStretch()
+            self.tabs.addTab(page, category)
+
+    def warn(self, message, title="Warning!"):
+        QMessageBox.warning(self, title, message)
+
+    def on_generate(self):
+        values = {token: field.text().strip() for token, field in self.fields.items()}
         empty_tokens = [token for token, value in values.items() if not value]
         selection = {}
-        for item, parts in registry.items():
+        for item, parts in self.registry.items():
             if not parts["box"].isChecked():
                 continue
             checked_channels = [ch for ch, cb in parts["channels"].items() if cb.isChecked()]
             selection[item] = checked_channels
         empty_channels = [item for item, chans in selection.items() if not chans]
         if empty_tokens:
-            message = "\n".join(empty_tokens)
-            warn(f"Missing info in:\n\n{message}")
+            missing_token = "\n".join(empty_tokens)
+            self.warn(f"Missing info in:\n\n{missing_token}")
             return
         if not selection:
-            warn("No delivery selected")
+            self.warn("No delivery selected")
             return
         if empty_channels:
-            message = "\n".join(empty_channels)
-            warn(f"Missing channel in:\n\n{message}")
+            missing_delivery = "\n".join(empty_channels)
+            self.warn(f"Missing channel in:\n\n{missing_delivery}")
             return
-        job = plan_job(parent_pattern, catalog, values, selection)
-        create_folders(job, Path.home() / "Desktop")
+        job = plan_job(PARENT_PATTERN, self.catalog, values, selection)
+        destination = QFileDialog.getExistingDirectory(self, "Destination")
+        if not destination:
+            return
+        create_folders(job, Path(destination))
 
-    submit_btn.clicked.connect(on_generate)
-
+def main():
+    app = QApplication(sys.argv)
+    window = NestWindow()
     window.show()
     sys.exit(app.exec())
 
