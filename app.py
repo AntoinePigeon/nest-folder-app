@@ -49,7 +49,124 @@ class NestWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Nest")
-        self.resize(700, 300)
+        self.resize(750, 300)
+        self.setStyleSheet("""
+    QWidget {
+        background-color: #ffffff;
+        color: #111111;
+        font-family: -apple-system, "Helvetica Neue", sans-serif;
+        font-size: 16px;
+    }
+
+    QLabel {
+        color: #555555;
+        font-size: 16px;
+    }
+
+    QLineEdit {
+        background-color: #ffffff;
+        border: 1px solid #d8d8d8;
+        border-radius: 3px;
+        padding: 6px 8px;
+        min-width: 220px;
+        selection-background-color: #111111;
+        selection-color: #ffffff;
+    }
+    QLineEdit:focus {
+        border: 1px solid #111111;
+    }
+
+    QGroupBox {
+        border: 1px solid #e4e4e4;
+        border-radius: 4px;
+        margin-top: 20px;
+        font-weight: 500;
+    }
+    QGroupBox::indicator {
+        width: 13px;
+        height: 13px;
+        border: 1px solid #c4c4c4;
+        border-radius: 3px;
+        background-color: #ffffff;
+    }
+    QGroupBox::indicator:hover {
+        border: 1px solid #111111;
+    }
+    QGroupBox::indicator:checked {
+        background-color: #111111;
+        border: 1px solid #111111;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        subcontrol-position: top left;
+        left: 10px;
+        padding: 0px 4px;
+        color: #333333;
+    }
+    QGroupBox::title:checked {
+        color: #111111;
+        font-weight: 600;
+    }
+
+    QCheckBox {
+        spacing: 6px;
+        color: #999999;
+    }
+    QCheckBox::indicator {
+        width: 13px;
+        height: 13px;
+        border: 1px solid #c4c4c4;
+        border-radius: 3px;
+        background-color: #ffffff;
+    }
+    QCheckBox::indicator:hover {
+        border: 1px solid #111111;
+    }
+    QCheckBox::indicator:checked {
+        background-color: #E28600;
+        border: 1px solid #111111;
+    }
+    QCheckBox::indicator:disabled {
+        background-color: #f5f5f5;
+        border: 1px solid #e8e8e8;
+    }
+
+    QTabWidget::pane {
+        border: 1px solid #e4e4e4;
+        border-radius: 4px;
+        top: -1px;
+    }
+    QTabBar::tab {
+        background: transparent;
+        color: #999999;
+        padding: 7px 14px;
+        margin-right: 2px;
+        border: none;
+        border-bottom: 2px solid transparent;
+    }
+    QTabBar::tab:hover {
+        color: #444444;
+    }
+    QTabBar::tab:selected {
+        color: #111111;
+        border-bottom: 2px solid #111111;
+    }
+
+    QPushButton {
+        background-color: #111111;
+        color: #ffffff;
+        border: none;
+        border-radius: 4px;
+        padding: 10px 20px;
+        font-weight: 600;
+    }
+    QPushButton:hover {
+        background-color: #E28600;
+    }
+    QPushButton:pressed {
+        background-color: #000000;
+    }
+""")
         self.catalog = CATALOG
         self.build_ui()
 
@@ -93,6 +210,8 @@ class NestWindow(QWidget):
                 group.setCheckable(True)
                 group.setChecked(False)
                 inner = QHBoxLayout(group) # Use QVBoxLayout for vertical layout
+                inner.setContentsMargins(8, 10, 8, 10)
+                inner.setSpacing(20)
 
                 channel_boxes = {}
                 for channel in CHANNELS:
