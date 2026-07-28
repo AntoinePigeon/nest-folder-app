@@ -1,6 +1,7 @@
 import sys
 from datetime import date
-from PySide6.QtWidgets import QApplication, QWidget, QLineEdit, QFormLayout, QPushButton, QMessageBox, QGroupBox, QHBoxLayout, QVBoxLayout, QCheckBox, QFileDialog, QTabWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QWidget, QLineEdit, QFormLayout, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout, QCheckBox, QFileDialog, QTabWidget, QDialog, QDialogButtonBox, QStyle, QLabel
 from pathlib import Path
 from core import plan_job, create_folders
 
@@ -44,6 +45,32 @@ CATEGORIES = {
     "Mix Minus": ["mix_no_dial", "mix_no_mus", "mix_no_vo", "mix_undipped"],
     "Stems": ["dial_no_vo", "vo", "mus_score", "mus_stock", "mus_undipped"]
 }
+
+class NestDialog(QDialog):
+    def __init__(self, message, title="Missing info", parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.resize(300, 150)
+
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.icon_label = QLabel()
+        standard_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxWarning)
+        pixmap = standard_icon.pixmap(70, 70)
+        self.icon_label.setPixmap(pixmap)
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.message_label = QLabel(message)
+        self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.centerButtons() 
+
+        layout.addWidget(self.icon_label)
+        layout.addWidget(self.message_label)
+        layout.addWidget(self.button_box)
 
 class NestWindow(QWidget):
     def __init__(self):
@@ -225,8 +252,9 @@ class NestWindow(QWidget):
             page_layout.addStretch()
             self.tabs.addTab(page, category)
 
-    def warn(self, message, title="Warning!"):
-        QMessageBox.warning(self, title, message)
+    def warn(self, message, title="Missing info"):
+        dialog = NestDialog(message, title, parent=self)
+        dialog.exec()
 
     def on_generate(self):
         values = {token: field.text().strip() for token, field in self.fields.items()}
