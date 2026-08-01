@@ -1,12 +1,15 @@
 import sys
 from datetime import date
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 from PySide6.QtWidgets import QApplication, QWidget, QLineEdit, QFormLayout, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout, QCheckBox, QFileDialog, QTabWidget, QDialog, QDialogButtonBox, QStyle, QLabel
 from pathlib import Path
 from core import plan_job, create_folders
+from functools import partial
 
 today = date.today()
 today_string = today.strftime("%Y%m%d")
+
+FORBIDDEN_CHARS = set('/\\:*?"<>|')
 
 TOKENS = ["nomdetravail", "episode", "distinction", "langue", "ref", "niveau", "cadence", "version_ss", "date"]
 
@@ -80,6 +83,8 @@ class NestWindow(QWidget):
         self.load_stylesheet()
         self.catalog = CATALOG
         self.build_ui()
+        self.settings = QSettings()
+        self.load_settings()
 
     def load_stylesheet(self):
         try:
@@ -90,7 +95,6 @@ class NestWindow(QWidget):
             print(f"Stylesheet not found at {style_path}")
 
     def build_ui(self):
-
         self.fields = {}
         self.registry = {}
         self.tabs = QTabWidget()
@@ -124,11 +128,19 @@ class NestWindow(QWidget):
             page = QWidget()
             page_layout = QVBoxLayout(page)
 
+            header = QWidget()
+            header_layout = QHBoxLayout(header)
+            for channel in CHANNELS:
+                master = QCheckBox(f"All\n{channel}")
+                master.toggled.connect(partial(self.apply_master, category, channel))
+                header_layout.addWidget(master)
+            page_layout.addWidget(header)
+
             for delivery_item in items:
                 group = QGroupBox(delivery_item)
                 group.setCheckable(True)
                 group.setChecked(False)
-                inner = QHBoxLayout(group) # Use QVBoxLayout for vertical layout
+                inner = QHBoxLayout(group)
                 inner.setContentsMargins(8, 10, 8, 10)
                 inner.setSpacing(20)
 
@@ -143,6 +155,25 @@ class NestWindow(QWidget):
 
             page_layout.addStretch()
             self.tabs.addTab(page, category)
+
+    def load_settings(self):
+        for token, field in self.fields.items():
+            default = DEFAULTS.get(token)
+            if default is not None:
+                continue
+            field.setText(self.settings.value(token, ""))
+
+    def closeEvent(self, event):
+        for token, field in self.fields.items():
+            default = DEFAULTS.get(token)
+            if default is not None:
+                continue
+            self.settings.setValue(token, field.text().strip())
+        super().closeEvent(event)
+
+    def apply_master(self, category, channel, checked):
+        for delivery_item in CATEGORIES[category]:
+            self.registry[delivery_item]["channels"][channel].setChecked(checked)
 
     def warn(self, message, title="Missing info"):
         dialog = NestDialog(message, title, parent=self)
@@ -162,6 +193,14 @@ class NestWindow(QWidget):
             missing_token = "\n".join(empty_tokens)
             self.warn(f"Missing info in:\n\n{missing_token}")
             return
+        invalid_tokens = [
+            token for token, value in values.items()
+            if any(char in FORBIDDEN_CHARS for char in value)
+        ]
+        if invalid_tokens:
+            message = "\n".join(invalid_tokens)
+            self.warn(f"Invalid character in:\n\n{message}\n\nAvoid: / \\ : * ? \" < > |")
+            return
         if not selection:
             self.warn("No delivery selected")
             return
@@ -177,6 +216,8 @@ class NestWindow(QWidget):
 
 def main():
     app = QApplication(sys.argv)
+    app.setOrganizationName("MELS")
+    app.setApplicationName("Nest") 
     window = NestWindow()
     window.show()
     sys.exit(app.exec())
