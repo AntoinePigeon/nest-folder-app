@@ -49,6 +49,10 @@ CATEGORIES = {
     "Stems": ["dial_no_vo", "vo", "mus_score", "mus_stock", "mus_undipped"]
 }
 
+def resource_path(filename: str) -> Path:
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+    return base / filename
+
 class NestDialog(QDialog):
     def __init__(self, message, title="Missing info", parent=None):
         super().__init__(parent)
@@ -87,10 +91,9 @@ class NestWindow(QWidget):
         self.load_settings()
 
     def load_stylesheet(self):
+        style_path = resource_path("style.qss")
         try:
-            style_path = Path(__file__).parent / "style.qss"
-            text = style_path.read_text()
-            self.setStyleSheet(text)
+            self.setStyleSheet(style_path.read_text())
         except FileNotFoundError:
             print(f"Stylesheet not found at {style_path}")
 
