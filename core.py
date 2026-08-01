@@ -20,7 +20,7 @@ def build_all(catalog: dict[str, str], values: dict[str, str], selection: dict[s
         child_folder_names.extend(fill_for_channels(pattern, values, channels))
     return child_folder_names
 
-def plan_job(parent_pattern: str, catalog: dict[str, str], values: dict[str, str], selection: dict[str, list[str]]) -> dict[str, str]:
+def plan_job(parent_pattern: str, catalog: dict[str, str], values: dict[str, str], selection: dict[str, list[str]]) -> dict:
     parent_folder_name = fill_template(parent_pattern, values)
     child_folder_names = build_all(catalog, values, selection)
     return {"parent": parent_folder_name, "children": child_folder_names}
